@@ -1,72 +1,11 @@
 __author__ = 'fcaramia'
-import networkx as nx
 import optparse
-from io import *
+from readinputs import *
 from utils import *
 
 
-def have_path(graph, start, end, max_depth, path=[], visited=[], depth=0):
-    if depth > max_depth:
-        return None
-    path = path + [start]
-    if start == end:
-        return path
-    if start not in graph:
-        return None
-    visited.append(start)
-    for node in graph[start]:
-        if node in visited:
-            continue
-        ret = have_path(graph, node, end, max_depth, path, visited, depth + 1)
-        if ret: return ret
-
-    return None
-
-
-def check_graph(candidates, graph, marks, max_depth):
-    part = (len(candidates) ** 2) / 100
-    count = 0
-    for i in range(len(candidates)):
-        for j in range(i + 1, len(candidates)):
-            count = count + 1
-
-            if count % part == 0:
-                print
-                count / part, "%"
-
-            c1 = candidates[i]
-            c2 = candidates[j]
-            # print "Evaluate candidates: ",c1,c2
-            if c1 in marks and c2 in marks[c1]:
-                continue
-            if c2 in marks and c1 in marks[c2]:
-                continue
-
-            path = have_path(graph, c1, c2, max_depth, visited=[])
-            if path:
-
-                if c1 in marks:
-                    marks[c1].append(c2)
-                else:
-                    marks[c1] = [c2]
-
-            else:
-                path = have_path(graph, c2, c1, max_depth, visited=[])
-
-                if path:
-
-                    if c2 in marks:
-                        marks[c2].append(c1)
-                    else:
-                        marks[c2] = [c1]
-
-                    #if path:
-                    #	print path
-    return marks
-
-
 def main():
-    gene_db_dir = "../gene_db/"
+    gene_db_dir = "../Data/gene_db/"
     parser = optparse.OptionParser()
     parser.add_option('-t', '--transFac', action='store_true', dest="trans_fac", help="use TransFac DB")
     parser.add_option('-p', '--phosphoSite', action='store_true', dest="phospho_site", help="use Phosphosite DB")
@@ -126,7 +65,7 @@ def main():
         if options.direction is False:
             print("Warning: expanding without directionality could add false positives")
         print("Expanding Search")
-        marks = check_graph(candidates.keys(), graph, marks, options.max_expand)
+        marks = check_graph(list(candidates.keys()), graph, marks, options.max_expand)
 
     i = 0
     for r in marks:
@@ -138,7 +77,7 @@ def main():
     f.write("Input file: " + options.candidate_file + '\n')
     f.write("DB Interactions marked: " + str(i) + '\n')
     if len(marks) > 0:
-        discarded = discard_candidates(candidates, marks, reg_db, string_db, options.std_dev, options.zscore)
+        discarded = discard_candidates(candidates, marks, options.std_dev, options.zscore)
         f.write("Discarded Genes:\n")
         for r in discarded:
             f.write(r + ' ' + str(candidates[r]) + "\n")
