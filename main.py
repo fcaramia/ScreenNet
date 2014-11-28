@@ -2,6 +2,7 @@ __author__ = 'fcaramia'
 import optparse
 from readinputs import *
 from utils import *
+import networkx as nx
 
 
 def main():
@@ -24,6 +25,7 @@ def main():
     parser.add_option('-e', '--expand', dest='expand', help="create graph to expand regulation assumption",
                       action="store_true", default=False)
     parser.add_option('-m', '--maxExpand', dest='max_expand', help="max size of path, default: 5", default=5, type=int)
+    parser.add_option('-u', '--prune', action='store_true', dest="prune", help="Prune graph for broken regulation")
 
     (options, args) = parser.parse_args()
 
@@ -43,64 +45,87 @@ def main():
     #Read DBs
     marks = {}
     if options.trans_fac:
-        print
-        "Loading TransFac"
+        print("Loading TransFac")
         graph = read_reg_db(gene_db_dir + "transfac_interactions.csv", graph, 'transfac', 'transcription factor')
 
     if options.phospho_site:
-        print
-        "Loading Phosphosite"
+        print("Loading Phosphosite")
         graph = read_reg_db(gene_db_dir + "kinase_curated_db.csv", graph, "phosphosite", "phosphorylation")
 
     if options.string_db:
-        print
-        "Loading String Actions"
+        print("Loading String Actions")
         graph = read_string_action_db(gene_db_dir + "actions_curated.tsv", graph, options.score, options.direction)
 
     #Check for direct regulation
-    marks = check_reg_graph(candidates, graph, marks)
+    marks = check_reg_graph(list(candidates.keys()), graph, marks)
 
     if options.expand:
         print("Warning: expanding increases running time considerably")
         if options.direction is False:
             print("Warning: expanding without directionality could add false positives")
         print("Expanding Search")
+        print(len(candidates), "candidates")
+        print(len(graph.nodes()), "nodes")
+        print(len(graph.edges()), "edges")
+
         marks = check_graph(list(candidates.keys()), graph, marks, options.max_expand)
 
     i = 0
     for r in marks:
         i += len(marks[r])
-    print
-    i, "interactions marked"
 
     f = open(options.out, 'w+')
     f.write("Input file: " + options.candidate_file + '\n')
     f.write("DB Interactions marked: " + str(i) + '\n')
+    print("DB Interactions marked: " + str(i) + '\n')
+
+    not_in_db = 0
+    nodes = list(graph.nodes())
+    for c in candidates:
+        if not c in nodes:
+            not_in_db += 1
+
+    f.write("Candidate genes with no evidence for selected score: " + str(not_in_db))
+    print("Candidate genes with no evidence for selected score: " + str(not_in_db))
+
+    ##DISCARD GENES
     if len(marks) > 0:
         discarded = discard_candidates(candidates, marks, options.std_dev, options.zscore)
-        f.write("Discarded Genes:\n")
+
+        ##PRUNING
+        pruned = []
+        if options.prune:
+            for d in discarded:
+                for m in marks:
+                    if d in marks[m] and m not in discarded and candidates[m] <= options.zscore:
+                        discarded.append(m)
+                        pruned.append([m, d])
+
+        f.write("\n\nDiscarded Genes: "+str(len(discarded)) + "\n")
+        print("Discarded Genes: "+str(len(discarded)) + "\n")
+        print("Pruned Genes: "+str(len(pruned)) + "\n")
+
         for r in discarded:
             f.write(r + ' ' + str(candidates[r]) + "\n")
 
-        f.write("\n\nDiscarded Genes detailed:\n")
+        f.write("\n\nDiscarded Genes detailed (empty for pruned nodes):\n")
         for r in discarded:
             f.write(r + ' ' + str(candidates[r]) + " regulates: \n")
             for g in marks[r]:
-                f.write("\t" + g + " " + str(candidates[g]) + '\n')
-        print
-        "Discarded Genes: ", len(discarded)
+                if candidates[r] < candidates[g]:
+                    f.write("\t" + g + " " + str(candidates[g]) + " " + str(nx.shortest_path(graph, r, g)) + '\n')
+
+        f.write("\n\nPruned detailed:\n")
+        for [p, d] in pruned:
+            f.write(p + ' pruned by ' + d + "\n")
 
     i = 0
-    print
-    "Direct Regulators:"
     f.write("\n\nGenes not dicarded:\n")
     for c in candidates:
         if c not in discarded:
             f.write(c + ' ' + str(candidates[c]) + '\n')
             i += 1
-    print
-    i
-
+    print("Genes not discarded "+str(i))
 
 if __name__ == '__main__':
     main()

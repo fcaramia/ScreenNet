@@ -23,8 +23,11 @@ def read_string_action_db(db_file, graph, min_score, direction, mode=None, actio
         if direction:
             graph.add_edge(a, b, source=source, interaction=mode, score=score)
         else:
-            graph.add_edge(a, b, source=source, interaction=mode, score=score)
-            graph.add_edge(b, a, source=source, interaction=mode, score=score)
+            if a_is_acting == "0":
+                graph.add_edge(a, b, source=source, interaction=mode, score=score)
+                graph.add_edge(b, a, source=source, interaction=mode, score=score)
+            else:
+                graph.add_edge(a, b, source=source, interaction=mode, score=score)
 
     return graph
 
