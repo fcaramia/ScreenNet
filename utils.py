@@ -11,7 +11,7 @@ def check_sign_of_candidates(candidates, parser):
 
     sign = numpy.mean(scores)
 
-    #Validate candidates
+    # Validate candidates
     for c in candidates:
         if sign > 0 > candidates[c]:
             parser.error("z-scores should have same sign")
@@ -28,7 +28,7 @@ def check_sign_of_candidates(candidates, parser):
 
 
 # Check if regulation interaction is present in candidates
-#Check for repeats and self-regulation
+# Check for repeats and self-regulation
 def check_reg_graph(candidates, graph, marks):
     candidates.sort()
     nodes = graph.nodes()
@@ -76,10 +76,10 @@ def check_graph(candidates, graph, marks, max_depth):
             if c2 in marks and c1 in marks[c2]:
                 continue
 
-            if not c1 in graph or not c2 in graph:
+            if c1 not in graph or c2 not in graph:
                 continue
 
-            #Check one way
+            # Check one way
             try:
                 path = nx.shortest_path(graph, c1, c2)
             except nx.exception.NetworkXNoPath:
