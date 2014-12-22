@@ -2,6 +2,41 @@ __author__ = 'fcaramia'
 import numpy
 import math
 import networkx as nx
+import os
+
+
+def validate_config(config):
+    valid_set = ["yes", "no"]
+    bool_keys = ["transFac", "phosphoSite", "string", "mirTarBase", "directed", "secondPass"]
+
+    if not all(config[k] in valid_set for k in bool_keys):
+        return False
+
+    if not os.path.isdir(config["gene_db_dir"]):
+        print("Invalid DB directory")
+        return False
+
+    if config["expand"] < 0:
+        print("Expand must be bigger than zero")
+        return False
+
+    if config["std_dev_val"] < 0:
+        print("std_dev_val must be bigger than zero")
+        return False
+
+    if config["siRNA"] + config["network"] + config["miRNA"] != 1.0:
+        print("Sum of weights must be 1.0")
+        return False
+
+    if config["score_reduce_fun"] not in ["exponential", "lineal"]:
+        print("Invalid Score reduce function")
+        return False
+
+    if config["network_score_select"] not in ["best", "average"]:
+        print("Invalid network score selection")
+        return False
+
+    return True
 
 
 def check_sign_of_candidates(candidates, parser):

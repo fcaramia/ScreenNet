@@ -6,65 +6,75 @@ import networkx as nx
 
 
 def main():
-    gene_db_dir = "../Data/gene_db/"
-    parser = optparse.OptionParser()
-    parser.add_option('-t', '--transFac', action='store_true', dest="trans_fac", help="use TransFac DB")
-    parser.add_option('-p', '--phosphoSite', action='store_true', dest="phospho_site", help="use Phosphosite DB")
-    parser.add_option('-s', '--string', action='store_true', dest="string_db", help="use String DB")
-    parser.add_option('-c', '--candidates', type='string', dest="candidate_file", help="candidates file")
-    parser.add_option('-r', '--score', type='int', dest='score', help="minimum evidence score, default: 400",
-                      default=400)
-    parser.add_option('-d', '--direction', action='store_true', dest='direction',
-                      help="evidence of direction for interaction", default=False)
-    parser.add_option('-x', '--standardDev', dest='std_dev',
-                      help="number of standard deviations to mark candidate for removal, default: 2", default=2.0,
-                      type='float')
-    parser.add_option('-z', '--maxZScore', dest='zscore', help="max zscore of discarded gene", default=3.0,
-                      type='float')
-    parser.add_option('-o', '--outfile', dest='out', help="output file", default='out.txt', type='string')
-    parser.add_option('-e', '--expand', dest='expand', help="create graph to expand regulation assumption",
-                      action="store_true", default=False)
-    parser.add_option('-m', '--maxExpand', dest='max_expand', help="max size of path, default: 5", default=5, type=int)
-    parser.add_option('-u', '--prune', action='store_true', dest="prune", help="Prune graph for broken regulation")
 
+    parser = optparse.OptionParser()
+
+    parser.add_option('-c', '--config', type='string', dest="config_file", help="config file")
+    parser.add_option('-s', '--siRNA', type='string', dest="siRNA_file", help="siRNA candidates file")
+    parser.add_option('-o', '--outfile', dest='out', help="output file", default='out.txt', type='string')
+    parser.add_option('-m', '--miRNA', dest='miRNA_file', help="miRNA file", type='string')
     (options, args) = parser.parse_args()
 
-    if not options.candidate_file:
-        parser.error("candidate file is needed")
+    if not options.config_file:
+        parser.error("config file is needed")
+
+    if not options.siRNA_file:
+        parser.error("siRNA file is needed")
+
+    #Read Config
+    config = {}
+    config = read_config(options.config_file, config)
+
+    #print config
+    for k in config:
+        print(k, config[k])
+
+    if not validate_config(config):
+        parser.error("Invalid config file")
 
     #Read Candidates
     candidates = {}
-    candidates = read_candidates(options.candidate_file, candidates)
+    candidates = read_candidates(options.siRNA_file, candidates)
+
+    #Read miRNA
+    if options.miRNA_file:
+        miRNAs = {}
+        miRNAs = read_candidates(options.miRNA_file, miRNAs)
 
     #Check sign of candidates
     candidates = check_sign_of_candidates(candidates, parser)
 
     #set graph
     graph = nx.DiGraph()
+    mir_graph = nx.DiGraph()
 
     #Read DBs
     marks = {}
-    if options.trans_fac:
+
+    if config["mirTarBase"] == 'yes':
         print("Loading TransFac")
-        graph = read_reg_db(gene_db_dir + "transfac_interactions.csv", graph, 'transfac', 'transcription factor')
+        mir_graph = read_reg_db(config["gene_db_dir"] + "hsa_MTI.csv", mir_graph, 'mirTarBase', 'miRNA interaction')
 
-    if options.phospho_site:
+    if config["transFac"] == 'yes':
+        print("Loading TransFac")
+        graph = read_reg_db(config["gene_db_dir"] + "transfac_interactions.csv", graph, 'transfac', 'transcription factor')
+
+    if config["phosphoSite"] == 'yes':
         print("Loading Phosphosite")
-        graph = read_reg_db(gene_db_dir + "kinase_curated_db.csv", graph, "phosphosite", "phosphorylation")
+        graph = read_reg_db(config["gene_db_dir"] + "kinase_curated_db.csv", graph, "phosphosite", "phosphorylation")
 
-    if options.string_db:
+    if config['string'] == 'yes':
         print("Loading String Actions")
-        graph = read_string_action_db(gene_db_dir + "actions_curated.tsv", graph, options.score, options.direction)
+        graph = read_string_action_db(config["gene_db_dir"] + "actions_curated.tsv", graph, config['directed'])
 
-    #Check for direct regulation
-    marks = check_reg_graph(list(candidates.keys()), graph, marks)
-
-    if options.expand:
-        print("Warning: expanding increases running time considerably")
-        if options.direction is False:
+    if config["expand"] == 0:
+        #Check only for direct regulation
+        marks = check_reg_graph(list(candidates.keys()), graph, marks)
+    else:
+        if config['directed'] == 'no':
             print("Warning: expanding without directionality could add false positives")
         print("Expanding Search")
-        print(len(candidates), "candidates")
+        print(len(candidates), "siRNA candidates")
         print(len(graph.nodes()), "nodes")
         print(len(graph.edges()), "edges")
 
@@ -76,8 +86,6 @@ def main():
 
     f = open(options.out, 'w+')
     f.write("Input file: " + options.candidate_file + '\n')
-    f.write("DB Interactions marked: " + str(i) + '\n')
-    print("DB Interactions marked: " + str(i) + '\n')
 
     not_in_db = 0
     nodes = list(graph.nodes())
