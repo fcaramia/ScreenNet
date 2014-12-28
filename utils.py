@@ -210,10 +210,14 @@ def get_mir_scores(candidates, mir_graph, mirs, mir_score_select):
 def normalize_scores(scores):
     ret = {}
     values = list(scores.values())
-    std = numpy.std(values)
-    avg = numpy.average(values)
+    a = 0.0
+    b = 1.0
+    min_val = min(values)
+    max_val = max(values)
+
+    # (b-a) (x - min) / max - min
 
     for k in scores:
-        ret[k] = (scores[k] - avg) / std
+        ret[k] = ((b-a)*(scores[k] - min_val)) / (max_val - min_val)
 
     return ret

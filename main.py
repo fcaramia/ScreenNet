@@ -101,6 +101,7 @@ def main():
 
     # Generate Network score for marked genes
     norm_network_scores = {}
+    paths_for_scoring = {}
     if len(marks) > 0:
 
         paths_for_scoring = mark_for_scoring(candidates, marks, config['std_dev_val'])
@@ -119,7 +120,7 @@ def main():
 
     norm_si_scores = normalize_scores(candidates)
 
-    print_results(graph, candidates, network_scores, mir_scores, config, options.out)
+    print_results(graph, paths_for_scoring, mir_graph, norm_si_scores, norm_network_scores, norm_mir_scores, miRNAs, config, options.out)
 
 
 if __name__ == '__main__':
