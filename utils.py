@@ -24,7 +24,8 @@ def validate_config(config):
         print("std_dev_val must be bigger than zero")
         return False
 
-    if config["siRNA"] + config["network"] + config["miRNA"] != 1.0:
+    sum_vals = config["siRNA"] + config["network"] + config["miRNA"]
+    if sum_vals < 0.99 or sum_vals > 1.01:
         print("Sum of weights must be 1.0")
         return False
 
@@ -34,6 +35,10 @@ def validate_config(config):
 
     if config["network_score_select"] not in ["best", "average"]:
         print("Invalid network score selection")
+        return False
+
+    if config["mir_score_select"] not in ["best", "average","sum"]:
+        print("Invalid mir score selection")
         return False
 
     return True
@@ -54,7 +59,7 @@ def check_sign_of_candidates(candidates, parser):
         if sign < 0 < candidates[c]:
             parser.error("z-scores should have same sign")
 
-    ##Change direction of regulation if negative
+    # Change direction of regulation if negative
     if sign < 0:
         for c in candidates:
             candidates[c] *= -1
@@ -79,9 +84,9 @@ def check_reg_graph(candidates, graph, marks):
     return marks
 
 
-def discard_candidates(candidates, marks, std_dev_filter, zscore):
+def mark_for_scoring(candidates, marks, std_dev_filter):
     scores = []
-    discarded = []
+    ret = {}
     for m in marks:
         for g in marks[m]:
             if candidates[m] < candidates[g]:
@@ -93,10 +98,12 @@ def discard_candidates(candidates, marks, std_dev_filter, zscore):
         for g in marks[m]:
             if candidates[m] < candidates[g]:
                 if math.fabs(candidates[m] - candidates[g]) >= std_dev_filter * std:
-                    if m not in discarded and candidates[m] <= zscore:
-                        discarded.append(m)
+                    if m not in ret:
+                        ret[m] = [g]
+                    else:
+                        ret[m].append(g)
 
-    return discarded
+    return ret
 
 
 def check_graph(candidates, graph, marks, max_depth):
@@ -126,7 +133,7 @@ def check_graph(candidates, graph, marks, max_depth):
                     marks[c1].append(c2)
                 else:
                     marks[c1] = [c2]
-            #Check other way
+            # Check other way
             try:
                 path = nx.shortest_path(graph, c2, c1)
             except nx.exception.NetworkXNoPath:
@@ -139,3 +146,74 @@ def check_graph(candidates, graph, marks, max_depth):
                     marks[c2] = [c1]
 
     return marks
+
+
+def get_network_scores(paths, graph, reduce_fun, select_score):
+
+    ret = {}
+
+    for s in paths:
+        score_sum = 0
+        for t in paths[s]:
+            p = nx.shortest_path(graph, s, t)
+            n = len(p) - 1
+            if n <= 0:
+                continue
+            path_sum = 0
+            for i in range(len(p)-1):
+                path_sum += graph.edge[p[i]][p[i+1]]['score']
+
+            score = float(path_sum) / float(n)
+
+            if reduce_fun == 'exponential':
+                score *= (1.0/2**(n-1))
+            else:
+                score *= (1.0/2*(n-1))
+
+            score_sum += score
+            if s not in ret:
+                ret[s] = score
+            else:
+                if ret[s] < score:
+                    ret[s] = score
+
+        if select_score == 'average':
+            ret[s] = score_sum/len(paths[s])
+
+    return ret
+
+
+def get_mir_scores(candidates, mir_graph, mirs, mir_score_select):
+
+    ret = {}
+
+    for c in candidates:
+            if c in mir_graph:
+                mir_sum = 0
+                for mir in mir_graph.predecessors(c):
+                    mir_sum += mirs[mir]
+                    if c not in ret:
+                        ret[c] = mirs[mir]
+                    else:
+                        if ret[c] < mirs[mir]:
+                            ret[c] = mirs[mir]
+
+                if mir_score_select is 'sum':
+                    ret[c] = mir_sum
+
+                elif mir_score_select is 'average':
+                    ret[c] = mir_sum/len(mir_graph.predecessors(c))
+
+    return ret
+
+
+def normalize_scores(scores):
+    ret = {}
+    values = list(scores.values())
+    std = numpy.std(values)
+    avg = numpy.average(values)
+
+    for k in scores:
+        ret[k] = (scores[k] - avg) / std
+
+    return ret

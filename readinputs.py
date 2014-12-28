@@ -2,7 +2,7 @@ __author__ = 'fcaramia'
 import configparser
 
 
-#read config
+# read config
 def read_config(file, config):
     config_parser = configparser.ConfigParser()
     config_parser.read_file(open(file))
@@ -20,18 +20,20 @@ def read_config(file, config):
     config["std_dev_val"] = config_parser.getfloat("scores", "std_dev_val")
     config["score_reduce_fun"] = config_parser.get("network", "score_reduce_fun")
     config["network_score_select"] = config_parser.get("network", "network_score_select")
+    config["mir_score_select"] = config_parser.get("miRNA", "mir_score_select")
+    config['min_score'] = config_parser.get('network', 'min_score')
 
     return config
 
 
-#read String db by certain filters
-def read_string_action_db(db_file, graph, direction, mode=None, action=None):
+# read String db by certain filters
+def read_string_action_db(db_file, graph, direction, score_val=0, mode=None, action=None):
     db_obj = open(db_file, 'r+')
-    #Skip header
+    # Skip header
     next(db_obj)
     for line in db_obj:
         [a, b, mode, action, a_is_acting, score, source, source2] = line.rstrip('\n').split('\t')
-        #Apply filters
+        # Apply filters
         if a == ' ' or b == ' ':
             continue
         if a == '' or b == '':
@@ -40,23 +42,25 @@ def read_string_action_db(db_file, graph, direction, mode=None, action=None):
             continue
         if direction and a_is_acting == '0':
             continue
+        if score < score_val:
+            continue
 
         if direction:
-            graph.add_edge(a, b, source=source, interaction=mode, score=score)
+            graph.add_edge(a, b, source=source, interaction=mode, score=float(score))
         else:
             if a_is_acting == "0":
-                graph.add_edge(a, b, source=source, interaction=mode, score=score)
-                graph.add_edge(b, a, source=source, interaction=mode, score=score)
+                graph.add_edge(a, b, source=source, interaction=mode, score=float(score))
+                graph.add_edge(b, a, source=source, interaction=mode, score=float(score))
             else:
-                graph.add_edge(a, b, source=source, interaction=mode, score=score)
+                graph.add_edge(a, b, source=source, interaction=mode, score=float(score))
 
     return graph
 
 
-#Same function for transfac and phosphosite
-def read_reg_db(db_file, graph, src, inter):
+# Same function for transfac and phosphosite
+def read_reg_db(db_file, graph, src, inter, score=0):
     db_obj = open(db_file, 'r+')
-    #Skip header
+    # Skip header
     next(db_obj)
     for line in db_obj:
         [reg, gene] = line.rstrip('\n').split(',')
@@ -67,14 +71,14 @@ def read_reg_db(db_file, graph, src, inter):
         if gene == "NA" or reg == "NA":
             continue
 
-        graph.add_edge(reg, gene, source=src, interaction=inter)
+        graph.add_edge(reg, gene, source=src, interaction=inter, score=float(score))
 
     return graph
 
 
 def read_candidates(file, candidates):
     candidates_obj = open(file)
-    #Skip header
+    # Skip header
     next(candidates_obj)
     for line in candidates_obj:
         [val, score] = line.rstrip('\n').split(',')

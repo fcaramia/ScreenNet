@@ -2,6 +2,7 @@ __author__ = 'fcaramia'
 import optparse
 from readinputs import *
 from utils import *
+from writeresults import *
 import networkx as nx
 
 
@@ -21,119 +22,105 @@ def main():
     if not options.siRNA_file:
         parser.error("siRNA file is needed")
 
-    #Read Config
+    # Read Config
     config = {}
     config = read_config(options.config_file, config)
 
-    #print config
+    # Print config
     for k in config:
         print(k, config[k])
 
     if not validate_config(config):
         parser.error("Invalid config file")
 
-    #Read Candidates
+    # Read Candidates
     candidates = {}
     candidates = read_candidates(options.siRNA_file, candidates)
 
-    #Read miRNA
+    miRNAs = {}
+    # Read miRNA
     if options.miRNA_file:
-        miRNAs = {}
         miRNAs = read_candidates(options.miRNA_file, miRNAs)
+        # Check sign of miRNAs
+        miRNAs = check_sign_of_candidates(miRNAs, parser)
 
-    #Check sign of candidates
+    # Check sign of candidates
     candidates = check_sign_of_candidates(candidates, parser)
 
-    #set graph
+    # set graph
     graph = nx.DiGraph()
     mir_graph = nx.DiGraph()
 
-    #Read DBs
+    # Read DBs
     marks = {}
 
     if config["mirTarBase"] == 'yes':
-        print("Loading TransFac")
+        print("Loading mirTarBase")
         mir_graph = read_reg_db(config["gene_db_dir"] + "hsa_MTI.csv", mir_graph, 'mirTarBase', 'miRNA interaction')
 
     if config["transFac"] == 'yes':
         print("Loading TransFac")
-        graph = read_reg_db(config["gene_db_dir"] + "transfac_interactions.csv", graph, 'transfac', 'transcription factor')
+        graph = read_reg_db(config["gene_db_dir"] + "transfac_interactions.csv", graph, 'transfac',
+                            "transcription factor", 1000)
 
     if config["phosphoSite"] == 'yes':
         print("Loading Phosphosite")
-        graph = read_reg_db(config["gene_db_dir"] + "kinase_curated_db.csv", graph, "phosphosite", "phosphorylation")
+        graph = read_reg_db(config["gene_db_dir"] + "kinase_curated_db.csv", graph, "phosphosite",
+                            "phosphorylation", 1000)
 
     if config['string'] == 'yes':
         print("Loading String Actions")
-        graph = read_string_action_db(config["gene_db_dir"] + "actions_curated.tsv", graph, config['directed'])
+        graph = read_string_action_db(config["gene_db_dir"] + "actions_curated.tsv", graph, config['directed'],
+                                      config["min_score"])
 
+    # Mark genes that are connected to each other
     if config["expand"] == 0:
-        #Check only for direct regulation
+        # Check only for direct regulation
         marks = check_reg_graph(list(candidates.keys()), graph, marks)
     else:
         if config['directed'] == 'no':
-            print("Warning: expanding without directionality could add false positives")
+            print("Warning: creating a non directed network could add false positives")
         print("Expanding Search")
         print(len(candidates), "siRNA candidates")
         print(len(graph.nodes()), "nodes")
         print(len(graph.edges()), "edges")
 
-        marks = check_graph(list(candidates.keys()), graph, marks, options.max_expand)
+        marks = check_graph(list(candidates.keys()), graph, marks, config['expand'])
 
     i = 0
     for r in marks:
         i += len(marks[r])
 
-    f = open(options.out, 'w+')
-    f.write("Input file: " + options.candidate_file + '\n')
-
     not_in_db = 0
     nodes = list(graph.nodes())
     for c in candidates:
-        if not c in nodes:
+        if c not in nodes:
             not_in_db += 1
 
-    f.write("Candidate genes with no evidence for selected score: " + str(not_in_db))
     print("Candidate genes with no evidence for selected score: " + str(not_in_db))
 
-    ##DISCARD GENES
+    # Generate Network score for marked genes
+    norm_network_scores = {}
     if len(marks) > 0:
-        discarded = discard_candidates(candidates, marks, options.std_dev, options.zscore)
 
-        ##PRUNING
-        pruned = []
-        if options.prune:
-            for d in discarded:
-                for m in marks:
-                    if d in marks[m] and m not in discarded and candidates[m] <= options.zscore:
-                        discarded.append(m)
-                        pruned.append([m, d])
+        paths_for_scoring = mark_for_scoring(candidates, marks, config['std_dev_val'])
+        # Generate network scores
+        network_scores = get_network_scores(paths_for_scoring, graph, config['score_reduce_fun'],
+                                            config['network_score_select'])
 
-        f.write("\n\nDiscarded Genes: "+str(len(discarded)) + "\n")
-        print("Discarded Genes: "+str(len(discarded)) + "\n")
-        print("Pruned Genes: "+str(len(pruned)) + "\n")
+        norm_network_scores = normalize_scores(network_scores)
 
-        for r in discarded:
-            f.write(r + ' ' + str(candidates[r]) + "\n")
+    # Generate miRNA scores
+    norm_mir_scores = {}
+    if len(mir_graph) > 0 and len(miRNAs) > 0:
+        # Search predecessors of genes and compute mir scores
+        mir_scores = get_mir_scores(candidates, mir_graph, miRNAs, config['mir_score_select'])
+        norm_mir_scores = normalize_scores(mir_scores)
 
-        f.write("\n\nDiscarded Genes detailed (empty for pruned nodes):\n")
-        for r in discarded:
-            f.write(r + ' ' + str(candidates[r]) + " regulates: \n")
-            for g in marks[r]:
-                if candidates[r] < candidates[g]:
-                    f.write("\t" + g + " " + str(candidates[g]) + " " + str(nx.shortest_path(graph, r, g)) + '\n')
+    norm_si_scores = normalize_scores(candidates)
 
-        f.write("\n\nPruned detailed:\n")
-        for [p, d] in pruned:
-            f.write(p + ' pruned by ' + d + "\n")
+    print_results(graph, candidates, network_scores, mir_scores, config, options.out)
 
-    i = 0
-    f.write("\n\nGenes not dicarded:\n")
-    for c in candidates:
-        if c not in discarded:
-            f.write(c + ' ' + str(candidates[c]) + '\n')
-            i += 1
-    print("Genes not discarded "+str(i))
 
 if __name__ == '__main__':
     main()
