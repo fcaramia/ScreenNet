@@ -13,7 +13,6 @@ def read_config(file, config):
     config["gene_db_dir"] = config_parser.get("databases", "gene_db_dir")
     config["directed"] = config_parser.get("network", "directed")
     config["expand"] = config_parser.getint("network", "expand")
-    config["secondPass"] = config_parser.get("network", "secondPass")
     config["siRNA"] = config_parser.getfloat("weights", "siRNA")
     config["network"] = config_parser.getfloat("weights", "network")
     config["miRNA"] = config_parser.getfloat("weights", "miRNA")
@@ -22,6 +21,7 @@ def read_config(file, config):
     config["network_score_select"] = config_parser.get("network", "network_score_select")
     config["mir_score_select"] = config_parser.get("miRNA", "mir_score_select")
     config['min_score'] = config_parser.get('network', 'min_score')
+    config['filter_by_si'] = config_parser.get('network', 'filter_by_si')
 
     return config
 
@@ -40,12 +40,12 @@ def read_string_action_db(db_file, graph, direction, score_val=0, mode=None, act
             continue
         if a == "NA" or b == "NA":
             continue
-        if direction and a_is_acting == '0':
+        if direction == 'yes' and a_is_acting == '0':
             continue
         if score < score_val:
             continue
 
-        if direction:
+        if direction == 'yes':
             graph.add_edge(a, b, source=source, interaction=mode, score=float(score))
         else:
             if a_is_acting == "0":

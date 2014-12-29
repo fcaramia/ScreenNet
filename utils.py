@@ -7,7 +7,7 @@ import os
 
 def validate_config(config):
     valid_set = ["yes", "no"]
-    bool_keys = ["transFac", "phosphoSite", "string", "mirTarBase", "directed", "secondPass"]
+    bool_keys = ["transFac", "phosphoSite", "string", "mirTarBase", "directed", "filter_by_si"]
 
     if not all(config[k] in valid_set for k in bool_keys):
         return False
@@ -191,12 +191,13 @@ def get_mir_scores(candidates, mir_graph, mirs, mir_score_select):
             if c in mir_graph:
                 mir_sum = 0
                 for mir in mir_graph.predecessors(c):
-                    mir_sum += mirs[mir]
-                    if c not in ret:
-                        ret[c] = mirs[mir]
-                    else:
-                        if ret[c] < mirs[mir]:
+                    if mir in mirs:
+                        mir_sum += mirs[mir]
+                        if c not in ret:
                             ret[c] = mirs[mir]
+                        else:
+                            if ret[c] < mirs[mir]:
+                                ret[c] = mirs[mir]
 
                 if mir_score_select is 'sum':
                     ret[c] = mir_sum

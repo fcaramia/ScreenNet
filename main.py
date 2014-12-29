@@ -101,10 +101,11 @@ def main():
 
     # Generate Network score for marked genes
     norm_network_scores = {}
-    paths_for_scoring = {}
+    paths_for_scoring = marks
     if len(marks) > 0:
 
-        paths_for_scoring = mark_for_scoring(candidates, marks, config['std_dev_val'])
+        if config['filter_by_si']:
+            paths_for_scoring = mark_for_scoring(candidates, marks, config['std_dev_val'])
         # Generate network scores
         network_scores = get_network_scores(paths_for_scoring, graph, config['score_reduce_fun'],
                                             config['network_score_select'])

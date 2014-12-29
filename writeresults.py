@@ -14,8 +14,8 @@ def print_results(graph, paths, mir_graph, candidates, network_scores, mir_score
         out_writer.writerow(line)
 
         # print header
-        line = ['Gene', 'Total_Score', 'siRNA_Score', 'ScreenNet_score', 'miRNA_Score', 'ScreenNet_Detail',
-                'miRNA_detail']
+        line = ['Gene', 'Total_Score', 'siRNA_Score', 'ScreenNet_Score', 'miRNA_Score', 'ScreenNet_Detail',
+                'miRNA_Detail']
 
         out_writer.writerow(line)
 
