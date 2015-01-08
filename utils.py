@@ -24,11 +24,6 @@ def validate_config(config):
         print("std_dev_val must be bigger than zero")
         return False
 
-    sum_vals = config["siRNA"] + config["network"] + config["miRNA"]
-    if sum_vals < 0.99 or sum_vals > 1.01:
-        print("Sum of weights must be 1.0")
-        return False
-
     if config["score_reduce_fun"] not in ["exponential", "lineal"]:
         print("Invalid Score reduce function")
         return False
@@ -37,7 +32,7 @@ def validate_config(config):
         print("Invalid network score selection")
         return False
 
-    if config["mir_score_select"] not in ["best", "average","sum"]:
+    if config["mir_score_select"] not in ["best", "average", "sum"]:
         print("Invalid mir score selection")
         return False
 
@@ -208,17 +203,22 @@ def get_mir_scores(candidates, mir_graph, mirs, mir_score_select):
     return ret
 
 
-def normalize_scores(scores):
+def normalize_scores(scores, a, b, capping):
     ret = {}
     values = list(scores.values())
-    a = 0.0
-    b = 1.0
-    min_val = min(values)
-    max_val = max(values)
+    median = numpy.median(values)
+    std = numpy.std(values)
+    if capping != 0.0:
+        for k in scores:
+            if(std * capping) < (scores[k] - median):
+                scores[k] = median + (std * capping)
 
+    values = list(scores.values())
+    min_val = 0
+    max_val = max(values)
     # (b-a) (x - min) / max - min
 
     for k in scores:
-        ret[k] = ((b-a)*(scores[k] - min_val)) / (max_val - min_val)
-
+        ret[k] = ((1.0-a)*(scores[k] - min_val)) / (max_val - min_val)
+        ret[k] = numpy.log2(ret[k] + 1.0) * b
     return ret

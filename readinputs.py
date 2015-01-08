@@ -22,6 +22,8 @@ def read_config(file, config):
     config["mir_score_select"] = config_parser.get("miRNA", "mir_score_select")
     config['min_score'] = config_parser.get('network', 'min_score')
     config['filter_by_si'] = config_parser.get('network', 'filter_by_si')
+    config['std_capping'] = config_parser.get('ranking', 'std_capping')
+    config['interest_genes'] = config_parser.get('interest_genes', 'gene_list').split(',')
 
     return config
 

@@ -110,19 +110,22 @@ def main():
         network_scores = get_network_scores(paths_for_scoring, graph, config['score_reduce_fun'],
                                             config['network_score_select'])
 
-        norm_network_scores = normalize_scores(network_scores)
+        norm_network_scores = normalize_scores(network_scores, 0.0, float(config["network"]), 0.0)
 
     # Generate miRNA scores
     norm_mir_scores = {}
     if len(mir_graph) > 0 and len(miRNAs) > 0:
         # Search predecessors of genes and compute mir scores
         mir_scores = get_mir_scores(candidates, mir_graph, miRNAs, config['mir_score_select'])
-        norm_mir_scores = normalize_scores(mir_scores)
+        norm_mir_scores = normalize_scores(mir_scores, 0.0, float(config["miRNA"]), 0.0)
 
-    norm_si_scores = normalize_scores(candidates)
+    norm_si_scores = normalize_scores(candidates, 0.0, float(config["siRNA"]), float(config["std_capping"]))
 
-    print_results(graph, paths_for_scoring, mir_graph, norm_si_scores, norm_network_scores, norm_mir_scores, miRNAs, config, options.out)
+    total_scores = print_results(graph, paths_for_scoring, mir_graph, norm_si_scores, norm_network_scores,
+                  norm_mir_scores, miRNAs, config, options.out, candidates, network_scores, mir_scores,
+                  config['interest_genes'])
 
+    print_stats(norm_si_scores,norm_network_scores,norm_mir_scores, total_scores)
 
 if __name__ == '__main__':
     main()
