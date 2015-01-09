@@ -46,7 +46,7 @@ def main():
 
     # Check sign of candidates
     candidates = check_sign_of_candidates(candidates, parser)
-
+    candidates_raw = candidates.copy()
     # set graph
     graph = nx.DiGraph()
     mir_graph = nx.DiGraph()
@@ -121,11 +121,12 @@ def main():
 
     norm_si_scores = normalize_scores(candidates, 0.0, float(config["siRNA"]), float(config["std_capping"]))
 
-    total_scores = print_results(graph, paths_for_scoring, mir_graph, norm_si_scores, norm_network_scores,
-                  norm_mir_scores, miRNAs, config, options.out, candidates, network_scores, mir_scores,
-                  config['interest_genes'])
+    total_scores = process_total_scores(norm_si_scores, norm_network_scores, norm_mir_scores)
 
-    print_stats(norm_si_scores,norm_network_scores,norm_mir_scores, total_scores)
+    print_results(options.out, graph, paths_for_scoring, mir_graph, total_scores, norm_si_scores, norm_network_scores, norm_mir_scores,
+                  config, candidates_raw, network_scores, mir_scores)
+
+    print_stats(norm_si_scores, norm_network_scores, norm_mir_scores, total_scores)
 
 if __name__ == '__main__':
     main()

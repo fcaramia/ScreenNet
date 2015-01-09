@@ -28,7 +28,7 @@ def validate_config(config):
         print("Invalid Score reduce function")
         return False
 
-    if config["network_score_select"] not in ["best", "average"]:
+    if config["network_score_select"] not in ["best", "average", "sum"]:
         print("Invalid network score selection")
         return False
 
@@ -174,6 +174,8 @@ def get_network_scores(paths, graph, reduce_fun, select_score):
 
         if select_score == 'average':
             ret[s] = score_sum/len(paths[s])
+        if select_score == 'sum':
+            ret[s] = score_sum
 
     return ret
 
@@ -222,3 +224,20 @@ def normalize_scores(scores, a, b, capping):
         ret[k] = ((1.0-a)*(scores[k] - min_val)) / (max_val - min_val)
         ret[k] = numpy.log2(ret[k] + 1.0) * b
     return ret
+
+
+def process_total_scores(si_scores, net_scores, mir_scores):
+
+    total_scores = {}
+    for c in si_scores:
+        mir_score = 0
+        network_score = 0
+
+        if c in mir_scores:
+            mir_score = mir_scores[c]
+
+        if c in net_scores:
+            network_score = net_scores[c]
+
+        total_scores[c] = si_scores[c] + mir_score - network_score
+    return total_scores
