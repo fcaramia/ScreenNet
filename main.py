@@ -124,9 +124,9 @@ def main():
     total_scores = process_total_scores(norm_si_scores, norm_network_scores, norm_mir_scores)
 
     print_results(options.out, graph, paths_for_scoring, mir_graph, total_scores, norm_si_scores, norm_network_scores, norm_mir_scores,
-                  config, candidates_raw, network_scores, mir_scores)
+                  config, candidates_raw, network_scores, mir_scores, miRNAs)
 
-    print_stats(norm_si_scores, norm_network_scores, norm_mir_scores, total_scores)
+    print_stats(norm_si_scores, norm_network_scores, norm_mir_scores, total_scores, options.out)
 
 if __name__ == '__main__':
     main()

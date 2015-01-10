@@ -2,10 +2,11 @@ __author__ = 'fcaramia'
 import networkx as nx
 import csv
 from pylab import *
+import os
 
 
 def print_results(out_file, graph, paths, mir_graph, total_scores, si_norm, network_norm, mir_norm, config,
-                  raw_si_scores, raw_net_scores, raw_mir_scores):
+                  raw_si_scores, raw_net_scores, raw_mir_scores, miRNAs):
 
     interest_genes = config['interest_genes']
     sorted_total = sorted(total_scores.items(), key=lambda x: (x[1], x[0]), reverse=True)
@@ -77,8 +78,8 @@ def print_results(out_file, graph, paths, mir_graph, total_scores, si_norm, netw
             mir_detail = ""
             if c in mir_graph:
                 for mir in mir_graph.predecessors(c):
-                    if mir in raw_mir_scores:
-                        mir_detail += mir + ":" + str(raw_mir_scores[mir]) + " "
+                    if mir in miRNAs:
+                        mir_detail += mir + ":" + str(miRNAs[mir]) + " "
 
             line += [mir_detail]
 
@@ -114,7 +115,7 @@ def print_results(out_file, graph, paths, mir_graph, total_scores, si_norm, netw
         # out_writer.writerow(line)
 
 
-def print_stats(norm_si_scores, norm_network_scores, norm_mir_scores, total_scores):
+def print_stats(norm_si_scores, norm_network_scores, norm_mir_scores, total_scores, out):
     sorted_si = sorted(norm_si_scores.items(), key=lambda w: (w[1], w[0]), reverse=True)
     vals = []
     index = []
@@ -144,4 +145,4 @@ def print_stats(norm_si_scores, norm_network_scores, norm_mir_scores, total_scor
             vals.append(0.0)
     plot(vals)
 
-    show()
+    savefig(os.path.splitext(out)[0]+'.png')
