@@ -6,7 +6,7 @@ import os
 
 
 def print_results(out_file, graph, paths, mir_graph, total_scores, si_norm, network_norm, mir_norm, config,
-                  raw_si_scores, raw_net_scores, raw_mir_scores, miRNAs):
+                  raw_si_scores, raw_net_scores, raw_mir_scores, miRNAs, interactome):
 
     interest_genes = config['interest_genes']
     sorted_total = sorted(total_scores.items(), key=lambda x: (x[1], x[0]), reverse=True)
@@ -32,7 +32,7 @@ def print_results(out_file, graph, paths, mir_graph, total_scores, si_norm, netw
 
         # print header
         line = ['New_Rank', 'Original_Rank', 'Ranking_difference', 'Gene', 'Total_Score', 'siRNA_Score', 'ScreenNet_Score', 'miRNA_Score', 'siRNA_Raw_Score',
-                'ScreenNet_Raw_Score', 'miRNA_Raw_Score', 'ScreenNet_Detail', 'miRNA_Detail']
+                'ScreenNet_Raw_Score', 'miRNA_Raw_Score', 'interactome_info', 'ScreenNet_Detail', 'miRNA_Detail']
 
         for g in interest_genes:
             line += [g]
@@ -58,11 +58,16 @@ def print_results(out_file, graph, paths, mir_graph, total_scores, si_norm, netw
                 mir_score = mir_norm[c]
                 raw_mir_score = raw_mir_scores[c]
 
+            inter = ''
+            if c in interactome:
+                inter = interactome[c]
+
             line += [str(network_score)]
             line += [str(mir_score)]
             line += [str(raw_si_scores[c])]
             line += [str(raw_net_score)]
             line += [str(raw_mir_score)]
+            line += [str(inter)]
 
             net_detail = ""
             if c in paths:

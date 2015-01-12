@@ -10,6 +10,7 @@ def main():
 
     parser = optparse.OptionParser()
 
+    parser.add_option('-i', '--interactome', type='string', dest="interactome", help="interactome file")
     parser.add_option('-c', '--config', type='string', dest="config_file", help="config file")
     parser.add_option('-s', '--siRNA', type='string', dest="siRNA_file", help="siRNA candidates file")
     parser.add_option('-o', '--outfile', dest='out', help="output file", default='out.txt', type='string')
@@ -43,6 +44,11 @@ def main():
         miRNAs = read_candidates(options.miRNA_file, miRNAs)
         # Check sign of miRNAs
         miRNAs = check_sign_of_candidates(miRNAs, parser)
+
+    interactome = {}
+    # Read interactome
+    if options.interactome:
+        interactome = read_interactome(options.interactome, interactome)
 
     # Check sign of candidates
     candidates = check_sign_of_candidates(candidates, parser)
@@ -124,7 +130,7 @@ def main():
     total_scores = process_total_scores(norm_si_scores, norm_network_scores, norm_mir_scores)
 
     print_results(options.out, graph, paths_for_scoring, mir_graph, total_scores, norm_si_scores, norm_network_scores, norm_mir_scores,
-                  config, candidates_raw, network_scores, mir_scores, miRNAs)
+                  config, candidates_raw, network_scores, mir_scores, miRNAs, interactome)
 
     print_stats(norm_si_scores, norm_network_scores, norm_mir_scores, total_scores, options.out)
 

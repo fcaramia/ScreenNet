@@ -88,3 +88,15 @@ def read_candidates(file, candidates):
         candidates[val] = float(score)
 
     return candidates
+
+
+def read_interactome(file, interactome):
+    inter_obj = open(file)
+    # Skip header
+    next(inter_obj)
+    for line in inter_obj:
+        [val, info] = line.rstrip('\n').split(',')
+
+        interactome[val] = info
+
+    return interactome
