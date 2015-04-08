@@ -60,24 +60,13 @@ def main():
     # Read DBs
     marks = {}
 
-    if config["mirTarBase"] == 'yes':
+    if config["mirTarBase"] != '':
         print("Loading mirTarBase")
-        mir_graph = read_reg_db(config["gene_db_dir"] + "hsa_MTI.csv", mir_graph, 'mirTarBase', 'miRNA interaction')
+        mir_graph = read_db(config["gene_db_dir"] + config['mirTarBase'], mir_graph)
 
-    if config["transFac"] == 'yes':
-        print("Loading TransFac")
-        graph = read_reg_db(config["gene_db_dir"] + "transfac_interactions.csv", graph, 'transfac',
-                            "transcription factor", 1000)
+    for db in config['gene_dbs']:
 
-    if config["phosphoSite"] == 'yes':
-        print("Loading Phosphosite")
-        graph = read_reg_db(config["gene_db_dir"] + "kinase_curated_db.csv", graph, "phosphosite",
-                            "phosphorylation", 1000)
-
-    if config['string'] == 'yes':
-        print("Loading String Actions")
-        graph = read_string_action_db(config["gene_db_dir"] + "actions_curated.tsv", graph, config['directed'],
-                                      config["min_score"])
+        graph = read_db(config["gene_db_dir"] + db, graph, config['directed'], float(config["min_score"]))
 
     # Mark genes that are connected to each other
     if config["expand"] == 0:
@@ -106,17 +95,25 @@ def main():
     print("Candidate genes with no evidence for selected score: " + str(not_in_db))
 
     # Generate Network score for marked genes
-    norm_network_scores = {}
+    norm_network_scores_neg = {}
+    norm_network_scores_pos = {}
     paths_for_scoring = marks
+    network_scores_neg = {}
+    network_scores_pos = {}
+
     if len(marks) > 0:
 
         if config['filter_by_si']:
             paths_for_scoring = mark_for_scoring(candidates, marks, config['std_dev_val'])
         # Generate network scores
-        network_scores = get_network_scores(paths_for_scoring, graph, config['score_reduce_fun'],
-                                            config['network_score_select'])
+        get_network_scores(paths_for_scoring, graph, config['score_reduce_fun'], network_scores_neg, network_scores_pos)
 
-        norm_network_scores = normalize_scores(network_scores, 0.0, float(config["network"]), 0.0)
+        if config['scoring'] in ["neg", "pos_neg"]:
+            norm_network_scores_neg = normalize_scores(network_scores_neg, 0.0, float(config["network"]), 0.0)
+
+        if config['scoring'] in ["pos", "pos_neg"]:
+            norm_network_scores_pos = normalize_scores(network_scores_pos, 0.0, float(config["network"]), 0.0)
+
 
     # Generate miRNA scores
     norm_mir_scores = {}
@@ -127,12 +124,14 @@ def main():
 
     norm_si_scores = normalize_scores(candidates, 0.0, float(config["siRNA"]), float(config["std_capping"]))
 
-    total_scores = process_total_scores(norm_si_scores, norm_network_scores, norm_mir_scores)
+    total_scores = process_total_scores(norm_si_scores, norm_network_scores_neg, norm_network_scores_pos,
+                                        norm_mir_scores)
 
-    print_results(options.out, graph, paths_for_scoring, mir_graph, total_scores, norm_si_scores, norm_network_scores, norm_mir_scores,
-                  config, candidates_raw, network_scores, mir_scores, miRNAs, interactome)
+    print_results(options.out, graph, paths_for_scoring, mir_graph, total_scores, norm_si_scores,
+                  norm_network_scores_neg, norm_network_scores_pos, norm_mir_scores, config, candidates_raw,
+                  network_scores_neg, network_scores_pos, mir_scores, miRNAs, interactome)
 
-    print_stats(norm_si_scores, norm_network_scores, norm_mir_scores, total_scores, options.out)
+    print_stats(norm_si_scores, norm_network_scores_neg, norm_network_scores_pos, norm_mir_scores, total_scores, options.out)
 
 if __name__ == '__main__':
     main()

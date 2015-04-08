@@ -6,9 +6,9 @@ import configparser
 def read_config(file, config):
     config_parser = configparser.ConfigParser()
     config_parser.read_file(open(file))
-    config["transFac"] = config_parser.get("databases", "transFac")
-    config["phosphoSite"] = config_parser.get("databases", "phosphoSite")
-    config["string"] = config_parser.get("databases", "string")
+
+    config["entrez_hgnc"] = config_parser.get("databases", "entrez_hgnc")
+    config["gene_dbs"] = config_parser.get("databases", "gene_dbs").split(',')
     config["mirTarBase"] = config_parser.get("databases", "mirTarBase")
     config["gene_db_dir"] = config_parser.get("databases", "gene_db_dir")
     config["directed"] = config_parser.get("network", "directed")
@@ -18,23 +18,23 @@ def read_config(file, config):
     config["miRNA"] = config_parser.getfloat("weights", "miRNA")
     config["std_dev_val"] = config_parser.getfloat("scores", "std_dev_val")
     config["score_reduce_fun"] = config_parser.get("network", "score_reduce_fun")
-    config["network_score_select"] = config_parser.get("network", "network_score_select")
     config["mir_score_select"] = config_parser.get("miRNA", "mir_score_select")
     config['min_score'] = config_parser.get('network', 'min_score')
     config['filter_by_si'] = config_parser.get('network', 'filter_by_si')
     config['std_capping'] = config_parser.get('ranking', 'std_capping')
     config['interest_genes'] = config_parser.get('interest_genes', 'gene_list').split(',')
+    config['scoring'] = config_parser.get('network', 'scoring')
 
     return config
 
 
 # read String db by certain filters
-def read_string_action_db(db_file, graph, direction, score_val=0, mode=None, action=None):
+def read_db(db_file, graph, direction='yes', score_val=0):
     db_obj = open(db_file, 'r+')
     # Skip header
     next(db_obj)
     for line in db_obj:
-        [a, b, mode, action, a_is_acting, score, source, source2] = line.rstrip('\n').split('\t')
+        [a, b, a_is_acting, score, activity, source] = line.rstrip('\n').split('\t')
         # Apply filters
         if a == ' ' or b == ' ':
             continue
@@ -44,36 +44,18 @@ def read_string_action_db(db_file, graph, direction, score_val=0, mode=None, act
             continue
         if direction == 'yes' and a_is_acting == '0':
             continue
-        if score < score_val:
+
+        if float(score) < score_val:
             continue
 
         if direction == 'yes':
-            graph.add_edge(a, b, source=source, interaction=mode, score=float(score))
+            graph.add_edge(a, b, source=source, interaction=activity, score=float(score))
         else:
             if a_is_acting == "0":
-                graph.add_edge(a, b, source=source, interaction=mode, score=float(score))
-                graph.add_edge(b, a, source=source, interaction=mode, score=float(score))
+                graph.add_edge(a, b, source=source, interaction=activity, score=float(score))
+                graph.add_edge(b, a, source=source, interaction=activity, score=float(score))
             else:
-                graph.add_edge(a, b, source=source, interaction=mode, score=float(score))
-
-    return graph
-
-
-# Same function for transfac and phosphosite
-def read_reg_db(db_file, graph, src, inter, score=0):
-    db_obj = open(db_file, 'r+')
-    # Skip header
-    next(db_obj)
-    for line in db_obj:
-        [reg, gene] = line.rstrip('\n').split(',')
-        if reg == ' ' or gene == ' ':
-            continue
-        if gene == '' or reg == '':
-            continue
-        if gene == "NA" or reg == "NA":
-            continue
-
-        graph.add_edge(reg, gene, source=src, interaction=inter, score=float(score))
+                graph.add_edge(a, b, source=source, interaction=activity, score=float(score))
 
     return graph
 

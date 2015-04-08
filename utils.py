@@ -7,7 +7,7 @@ import os
 
 def validate_config(config):
     valid_set = ["yes", "no"]
-    bool_keys = ["transFac", "phosphoSite", "string", "mirTarBase", "directed", "filter_by_si"]
+    bool_keys = ["directed", "filter_by_si"]
 
     if not all(config[k] in valid_set for k in bool_keys):
         return False
@@ -28,12 +28,12 @@ def validate_config(config):
         print("Invalid Score reduce function")
         return False
 
-    if config["network_score_select"] not in ["best", "average", "sum"]:
-        print("Invalid network score selection")
-        return False
-
     if config["mir_score_select"] not in ["best", "average", "sum"]:
         print("Invalid mir score selection")
+        return False
+
+    if config["scoring"] not in ["pos", "neg", "pos_neg"]:
+        print("Invalid scoring selection")
         return False
 
     return True
@@ -143,9 +143,7 @@ def check_graph(candidates, graph, marks, max_depth):
     return marks
 
 
-def get_network_scores(paths, graph, reduce_fun, select_score):
-
-    ret = {}
+def get_network_scores(paths, graph, reduce_fun, network_scores_neg, network_scores_pos):
 
     for s in paths:
         score_sum = 0
@@ -166,18 +164,15 @@ def get_network_scores(paths, graph, reduce_fun, select_score):
                 score *= (1.0/2*(n-1))
 
             score_sum += score
-            if s not in ret:
-                ret[s] = score
+            if s not in network_scores_neg:
+                network_scores_neg[s] = score
             else:
-                if ret[s] < score:
-                    ret[s] = score
+                network_scores_neg[s] += score
 
-        if select_score == 'average':
-            ret[s] = score_sum/len(paths[s])
-        if select_score == 'sum':
-            ret[s] = score_sum
-
-    return ret
+            if t not in network_scores_pos:
+                network_scores_pos[t] = score
+            else:
+                network_scores_pos[t] += score
 
 
 def get_mir_scores(candidates, mir_graph, mirs, mir_score_select):
@@ -226,18 +221,23 @@ def normalize_scores(scores, a, b, capping):
     return ret
 
 
-def process_total_scores(si_scores, net_scores, mir_scores):
+def process_total_scores(si_scores, net_scores_neg, net_scores_pos, mir_scores):
 
     total_scores = {}
     for c in si_scores:
         mir_score = 0
-        network_score = 0
+        network_score_neg = 0
+        net_score_pos = 0
 
         if c in mir_scores:
             mir_score = mir_scores[c]
 
-        if c in net_scores:
-            network_score = net_scores[c]
+        if c in net_scores_neg:
+            network_score_neg = net_scores_neg[c]
 
-        total_scores[c] = si_scores[c] + mir_score - network_score
+        if c in net_scores_pos:
+            net_score_pos = net_scores_pos[c]
+
+        total_scores[c] = si_scores[c] + mir_score + net_score_pos - network_score_neg
+
     return total_scores

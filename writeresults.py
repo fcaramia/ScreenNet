@@ -5,8 +5,8 @@ from pylab import *
 import os
 
 
-def print_results(out_file, graph, paths, mir_graph, total_scores, si_norm, network_norm, mir_norm, config,
-                  raw_si_scores, raw_net_scores, raw_mir_scores, miRNAs, interactome):
+def print_results(out_file, graph, paths, mir_graph, total_scores, si_norm, network_norm_neg, network_norm_pos, mir_norm, config,
+                  raw_si_scores, raw_net_scores_neg, raw_net_scores_pos, raw_mir_scores, miRNAs, interactome):
 
     interest_genes = config['interest_genes']
     sorted_total = sorted(total_scores.items(), key=lambda x: (x[1], x[0]), reverse=True)
@@ -31,9 +31,11 @@ def print_results(out_file, graph, paths, mir_graph, total_scores, si_norm, netw
             line += [k + ':' + str(config[k]) + ' ']
 
         # print header
-        line = ['New_Rank', 'Original_Rank', 'Ranking_difference', 'Gene', 'Total_Score', 'siRNA_Score', 'ScreenNet_Score', 'miRNA_Score', 'siRNA_Raw_Score',
-                'ScreenNet_Raw_Score', 'miRNA_Raw_Score', 'interactome_info', 'ScreenNet_Detail', 'miRNA_Detail']
-
+        line = ['New_Rank', 'Original_Rank', 'Ranking_difference', 'Gene', 'Total_Score', 'siRNA_Score',
+                'ScreenNet_Score_Neg', 'ScreenNet_Score_Pos', 'miRNA_Score', 'siRNA_Raw_Score',
+                'ScreenNet_Raw_Score_Neg', 'ScreenNet_Raw_Score_Pos', 'miRNA_Raw_Score',
+                'interactome_info', 'ScreenNet_Detail', 'miRNA_Detail']
+        # interest genes in header
         for g in interest_genes:
             line += [g]
 
@@ -46,11 +48,17 @@ def print_results(out_file, graph, paths, mir_graph, total_scores, si_norm, netw
             line += [total_scores[c]]
             line += [str(si_norm[c])]
 
-            network_score = 0
-            raw_net_score = 0
-            if c in network_norm:
-                network_score = network_norm[c]
-                raw_net_score = raw_net_scores[c]
+            network_score_neg = 0
+            raw_net_score_neg = 0
+            network_score_pos = 0
+            raw_net_score_pos = 0
+            if c in network_norm_neg:
+                network_score_neg = network_norm_neg[c]
+                raw_net_score_neg = raw_net_scores_neg[c]
+
+            if c in network_norm_pos:
+                network_score_pos = network_norm_pos[c]
+                raw_net_score_pos = raw_net_scores_pos[c]
 
             mir_score = ''
             raw_mir_score = ''
@@ -62,10 +70,12 @@ def print_results(out_file, graph, paths, mir_graph, total_scores, si_norm, netw
             if c in interactome:
                 inter = interactome[c]
 
-            line += [str(network_score)]
+            line += [str(network_score_neg)]
+            line += [str(network_score_pos)]
             line += [str(mir_score)]
             line += [str(raw_si_scores[c])]
-            line += [str(raw_net_score)]
+            line += [str(raw_net_score_neg)]
+            line += [str(raw_net_score_pos)]
             line += [str(raw_mir_score)]
             line += [str(inter)]
 
@@ -88,6 +98,7 @@ def print_results(out_file, graph, paths, mir_graph, total_scores, si_norm, netw
 
             line += [mir_detail]
 
+            # Path to interest genes
             for g in interest_genes:
                 net_detail = ""
                 if c in graph:
@@ -120,7 +131,7 @@ def print_results(out_file, graph, paths, mir_graph, total_scores, si_norm, netw
         # out_writer.writerow(line)
 
 
-def print_stats(norm_si_scores, norm_network_scores, norm_mir_scores, total_scores, out):
+def print_stats(norm_si_scores, norm_network_scores_neg, norm_network_scores_pos, norm_mir_scores, total_scores, out):
     sorted_si = sorted(norm_si_scores.items(), key=lambda w: (w[1], w[0]), reverse=True)
     vals = []
     index = []
@@ -130,8 +141,15 @@ def print_stats(norm_si_scores, norm_network_scores, norm_mir_scores, total_scor
     plot(vals)
     vals = []
     for x in index:
-        if x in norm_network_scores:
-            vals.append(norm_network_scores[x])
+        if x in norm_network_scores_neg:
+            vals.append(norm_network_scores_neg[x])
+        else:
+            vals.append(0.0)
+    plot(vals)
+    vals = []
+    for x in index:
+        if x in norm_network_scores_pos:
+            vals.append(norm_network_scores_pos[x])
         else:
             vals.append(0.0)
     plot(vals)
